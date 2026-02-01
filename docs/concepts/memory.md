@@ -16,13 +16,8 @@ Memory search tools are provided by the active memory plugin (default:
 
 ## Memory files (Markdown)
 
-The default workspace layout uses three memory layers:
+The default workspace layout uses two memory layers:
 
-- `TASK.md` (**new**)
-  - Current task state: goal, progress, next steps.
-  - **Your anchor after compaction** — tells future-you exactly where to resume.
-  - Read at every session start (before daily logs).
-  - Updated during pre-compaction context save.
 - `memory/YYYY-MM-DD.md`
   - Daily log (append-only).
   - Read today + yesterday at session start.
@@ -68,14 +63,13 @@ The pre-compaction context save automatically prompts the model to update
 
 ## When to write memory
 
-- **Current task state** (goal, progress, next steps) → `TASK.md`
-- Decisions, preferences, and durable facts → `MEMORY.md`
-- Day-to-day notes and running context → `memory/YYYY-MM-DD.md`
+- Decisions, preferences, and durable facts go to `MEMORY.md`.
+- Day-to-day notes and running context go to `memory/YYYY-MM-DD.md`.
 - If someone says "remember this," write it down (do not keep it in RAM).
 - This area is still evolving. It helps to remind the model to store memories; it will know what to do.
 - If you want something to stick, **ask the bot to write it** into memory.
 
-## Automatic context save (pre-compaction)
+## Automatic memory flush (pre-compaction ping)
 
 When a session is **close to auto-compaction**, OpenClaw triggers a **silent,
 agentic turn** that reminds the model to save **both task state and durable
@@ -286,20 +280,20 @@ If full-text search is unavailable on your platform, OpenClaw falls back to vect
 
 #### Why hybrid?
 
-Vector search is great at “this means the same thing”:
+Vector search is great at "this means the same thing":
 
-- “Mac Studio gateway host” vs “the machine running the gateway”
-- “debounce file updates” vs “avoid indexing on every write”
+- "Mac Studio gateway host" vs "the machine running the gateway"
+- "debounce file updates" vs "avoid indexing on every write"
 
 But it can be weak at exact, high-signal tokens:
 
 - IDs (`a828e60`, `b3b9895a…`)
 - code symbols (`memorySearch.query.hybrid`)
-- error strings (“sqlite-vec unavailable”)
+- error strings ("sqlite-vec unavailable")
 
 BM25 (full-text) is the opposite: strong at exact tokens, weaker at paraphrases.
 Hybrid search is the pragmatic middle ground: **use both retrieval signals** so you get
-good results for both “natural language” queries and “needle in a haystack” queries.
+good results for both "natural language" queries and "needle in a haystack" queries.
 
 #### How we merge results (the current design)
 
@@ -322,9 +316,9 @@ Notes:
 
 - `vectorWeight` + `textWeight` is normalized to 1.0 in config resolution, so weights behave as percentages.
 - If embeddings are unavailable (or the provider returns a zero-vector), we still run BM25 and return keyword matches.
-- If FTS5 can’t be created, we keep vector-only search (no hard failure).
+- If FTS5 can't be created, we keep vector-only search (no hard failure).
 
-This isn’t “IR-theory perfect”, but it’s simple, fast, and tends to improve recall/precision on real notes.
+This isn't "IR-theory perfect", but it's simple, fast, and tends to improve recall/precision on real notes.
 If we want to get fancier later, common next steps are Reciprocal Rank Fusion (RRF) or score normalization
 (min/max or z-score) before mixing.
 
@@ -388,7 +382,7 @@ Notes:
 - Session updates are debounced and **indexed asynchronously** once they cross delta thresholds (best-effort).
 - `memory_search` never blocks on indexing; results can be slightly stale until background sync finishes.
 - Results still include snippets only; `memory_get` remains limited to memory files.
-- Session indexing is isolated per agent (only that agent’s session logs are indexed).
+- Session indexing is isolated per agent (only that agent's session logs are indexed).
 - Session logs live on disk (`~/.openclaw/agents/<agentId>/sessions/*.jsonl`). Any process/user with filesystem access can read them, so treat disk access as the trust boundary. For stricter isolation, run agents under separate OS users or hosts.
 
 Delta thresholds (defaults shown):
